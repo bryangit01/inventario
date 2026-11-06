@@ -1,0 +1,94 @@
+<div class="fondo-modal" (click)="cancelar.emit()">
+  <form
+    class="modal modal-ancho"
+    [formGroup]="form"
+    (ngSubmit)="enviar()"
+    (click)="$event.stopPropagation()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-form"
+  >
+    <h2 id="titulo-form">{{ esEdicion ? 'Editar producto' : 'Nuevo producto' }}</h2>
+
+    <div class="fila-campos">
+      <label class="campo">
+        <span>Nombre</span>
+        <input type="text" formControlName="nombre" placeholder="Ej: Teclado mecánico" autofocus />
+        @if (form.controls.nombre.touched && form.controls.nombre.errors) {
+          <small class="error-campo">Escribe un nombre (máximo 120 caracteres).</small>
+        }
+      </label>
+      <label class="campo">
+        <span>SKU (código único)</span>
+        <input type="text" formControlName="sku" placeholder="Ej: TEC-001" />
+      </label>
+    </div>
+
+    <label class="campo">
+      <span>Descripción</span>
+      <textarea formControlName="descripcion" rows="2" placeholder="Detalles que ayuden a identificarlo"></textarea>
+    </label>
+
+    <div class="fila-campos">
+      <label class="campo">
+        <span>Categoría</span>
+        <select class="selector selector-ancho" formControlName="categoria_id">
+          <option [ngValue]="null">Sin categoría</option>
+          @for (c of categorias; track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        </select>
+      </label>
+      <label class="campo">
+        <span>Proveedor</span>
+        <select class="selector selector-ancho" formControlName="proveedor_id">
+          <option [ngValue]="null">Sin proveedor</option>
+          @for (p of proveedores; track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+        </select>
+      </label>
+    </div>
+
+    <div class="fila-campos fila-3">
+      <label class="campo">
+        <span>Precio de costo</span>
+        <input type="number" formControlName="precio_costo" min="0" step="0.01" />
+      </label>
+      <label class="campo">
+        <span>Precio de venta</span>
+        <input type="number" formControlName="precio_venta" min="0" step="0.01" />
+      </label>
+      <label class="campo">
+        <span>Stock mínimo</span>
+        <input type="number" formControlName="stock_minimo" min="0" step="1" />
+      </label>
+    </div>
+
+    <div class="fila-campos">
+      @if (!esEdicion) {
+        <label class="campo">
+          <span>Stock inicial</span>
+          <input type="number" formControlName="cantidad" min="0" step="1" />
+          @if (form.controls.cantidad.touched && form.controls.cantidad.errors) {
+            <small class="error-campo">La cantidad debe ser 0 o más.</small>
+          }
+        </label>
+      } @else {
+        <div class="campo">
+          <span>Stock actual</span>
+          <p class="ayuda">{{ producto?.cantidad }} unidades. Para cambiarlo usa «Mover stock» y quedará en el historial.</p>
+        </div>
+      }
+
+      <div class="campo">
+        <span>Estado</span>
+        <label class="interruptor-fila">
+          <input type="checkbox" formControlName="activo" class="interruptor" />
+          <span>{{ form.controls.activo.value ? 'Activo' : 'Inactivo' }}</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-acciones">
+      <button type="button" class="btn btn-suave" (click)="cancelar.emit()">Cancelar</button>
+      <button type="submit" class="btn btn-primario">{{ esEdicion ? 'Guardar cambios' : 'Crear producto' }}</button>
+    </div>
+  </form>
+</div>

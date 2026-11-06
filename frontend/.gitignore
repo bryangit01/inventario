@@ -1,0 +1,21 @@
+
+# Dependencias
+node_modules/
+
+# Carpeta de compilación: Render la genera con "npm run build"
+dist/
+
+# Caché interna de Angular
+.angular/
+
+# Variables de entorno, si las usas
+.env
+
+# Logs y archivos del sistema
+*.log
+.DS_Store
+Thumbs.db
+
+# Configuración personal del editor (opcional)
+.vscode/
+.idea/

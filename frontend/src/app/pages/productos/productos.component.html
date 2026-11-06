@@ -1,0 +1,220 @@
+<!-- ===== Título y acciones ===== -->
+<section class="encabezado">
+  <div>
+    <h1>Productos</h1>
+    <p class="subtitulo">Controla cada producto, su stock y su historial.</p>
+  </div>
+  <div class="acciones-encabezado">
+    <button type="button" class="btn btn-suave" (click)="exportar()">Exportar a Excel</button>
+    @if (auth.puedeEscribir) {
+      <button type="button" class="btn btn-suave" (click)="descargarPlantilla()">Plantilla CSV</button>
+      <button type="button" class="btn btn-suave" (click)="archivo.click()">Importar CSV</button>
+      <input #archivo type="file" accept=".csv,text/csv" hidden (change)="importar($event)" />
+      <button type="button" class="btn btn-primario" (click)="nuevo()">Nuevo producto</button>
+    }
+  </div>
+</section>
+
+<!-- ===== Búsqueda y filtros ===== -->
+<section class="herramientas">
+  <input
+    type="search"
+    class="buscador"
+    placeholder="Buscar por nombre, SKU o descripción"
+    (input)="busqueda$.next($any($event.target).value)"
+    aria-label="Buscar productos"
+  />
+  <select class="selector" [(ngModel)]="filtros.categoria_id" (ngModelChange)="aplicarFiltros()" aria-label="Filtrar por categoría">
+    <option [ngValue]="null">Todas las categorías</option>
+    @for (c of categorias; track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+  </select>
+  <select class="selector" [(ngModel)]="filtros.proveedor_id" (ngModelChange)="aplicarFiltros()" aria-label="Filtrar por proveedor">
+    <option [ngValue]="null">Todos los proveedores</option>
+    @for (p of proveedores; track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+  </select>
+  <div class="filtros" role="group" aria-label="Filtrar por estado">
+    @for (e of estadosVisibles; track e.valor) {
+      <button type="button" class="filtro" [class.filtro-activo]="filtros.estado === e.valor" (click)="setEstado(e.valor)">{{ e.etiqueta }}</button>
+    }
+  </div>
+</section>
+
+@if (enPapelera) {
+  <p class="aviso">Estás viendo la papelera. Los productos eliminados se pueden restaurar con su historial intacto.</p>
+}
+
+<!-- ===== Contenido ===== -->
+@if (cargando && resultado.datos.length === 0) {
+  <div class="estado-vacio">Cargando productos...</div>
+} @else if (errorCarga) {
+  <div class="estado-vacio estado-error">
+    <p>{{ errorCarga }}</p>
+    <button type="button" class="btn btn-suave" (click)="cargar()">Reintentar</button>
+  </div>
+} @else if (resultado.total === 0) {
+  <div class="estado-vacio">
+    @if (hayFiltros) {
+      <p>Ningún producto coincide con tu búsqueda.</p>
+      <button type="button" class="btn btn-suave" (click)="quitarFiltros()">Quitar filtros</button>
+    } @else if (enPapelera) {
+      <p>La papelera está vacía.</p>
+    } @else {
+      <p>Todavía no hay productos en el inventario.</p>
+      @if (auth.puedeEscribir) { <button type="button" class="btn btn-primario" (click)="nuevo()">Agregar el primero</button> }
+    }
+  </div>
+} @else {
+  <div class="tabla-caja" [class.cargando-suave]="cargando">
+    <table class="tabla tabla-ancha">
+      <thead>
+        <tr>
+          <th><button type="button" class="orden" (click)="ordenar('nombre')">Producto {{ flecha('nombre') }}</button></th>
+          <th>Clasificación</th>
+          <th><button type="button" class="orden" (click)="ordenar('precio_venta')">Precio {{ flecha('precio_venta') }}</button></th>
+          <th><button type="button" class="orden" (click)="ordenar('cantidad')">Stock {{ flecha('cantidad') }}</button></th>
+          <th>Estado</th>
+          <th class="col-acciones">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of resultado.datos; track p.id) {
+          <tr [class.fila-inactiva]="!p.activo">
+            <td>
+              <div class="producto-nombre">{{ p.nombre }}</div>
+              @if (p.sku) { <div class="sku">{{ p.sku }}</div> }
+              @if (p.descripcion) { <div class="producto-desc">{{ p.descripcion }}</div> }
+            </td>
+
+            <td>
+              <div>{{ p.categoria ?? 'Sin categoría' }}</div>
+              <div class="producto-desc">{{ p.proveedor ?? 'Sin proveedor' }}</div>
+            </td>
+
+            <td class="nowrap">
+              <div><strong>{{ p.precio_venta | currency: moneda : 'symbol-narrow' : '1.0-2' }}</strong></div>
+              @if (auth.puedeEscribir) {
+                <div class="producto-desc">costo {{ p.precio_costo | currency: moneda : 'symbol-narrow' : '1.0-2' }}</div>
+              }
+            </td>
+
+            <td>
+              <div class="stock">
+                @if (auth.puedeEscribir && !enPapelera) {
+                  <button type="button" class="paso" (click)="ajusteRapido(p, -1)" [disabled]="p.cantidad === 0" [attr.aria-label]="'Restar una unidad a ' + p.nombre">−</button>
+                }
+                <div class="stock-centro">
+                  <span class="stock-numero">{{ p.cantidad }}</span>
+                  <div class="barra-stock" aria-hidden="true">
+                    <div class="barra-relleno" [class]="'barra-relleno nivel-' + nivel(p)" [style.width.%]="porcentaje(p)"></div>
+                  </div>
+                  <span class="stock-texto" [class]="'stock-texto texto-' + nivel(p)">{{ etiquetaNivel(p) }}</span>
+                </div>
+                @if (auth.puedeEscribir && !enPapelera) {
+                  <button type="button" class="paso" (click)="ajusteRapido(p, 1)" [attr.aria-label]="'Sumar una unidad a ' + p.nombre">+</button>
+                }
+              </div>
+            </td>
+
+            <td>
+              <label class="interruptor-fila">
+                <input
+                  type="checkbox"
+                  class="interruptor"
+                  [checked]="p.activo"
+                  [disabled]="!auth.puedeEscribir || enPapelera"
+                  (change)="alternarEstado(p)"
+                  [attr.aria-label]="'Activar o desactivar ' + p.nombre"
+                />
+                <span>{{ p.activo ? 'Activo' : 'Inactivo' }}</span>
+              </label>
+            </td>
+
+            <td class="col-acciones">
+              @if (enPapelera) {
+                <button type="button" class="btn btn-suave btn-chico" (click)="restaurar(p)">Restaurar</button>
+              } @else {
+                <button type="button" class="btn btn-suave btn-chico" (click)="productoHistorial = p">Historial</button>
+                @if (auth.puedeEscribir) {
+                  <button type="button" class="btn btn-suave btn-chico" (click)="productoMover = p">Mover stock</button>
+                  <button type="button" class="btn btn-suave btn-chico" (click)="editar(p)">Editar</button>
+                }
+                @if (auth.esAdmin) {
+                  <button type="button" class="btn btn-peligro btn-chico" (click)="productoAEliminar = p">Eliminar</button>
+                }
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <app-paginador
+    [pagina]="resultado.pagina"
+    [limite]="resultado.limite"
+    [total]="resultado.total"
+    [totalPaginas]="resultado.totalPaginas"
+    (cambiar)="cambiarPagina($event)"
+  />
+}
+
+<!-- ===== Ventanas ===== -->
+@if (mostrarForm) {
+  <app-producto-form
+    [producto]="productoEditando"
+    [categorias]="categorias"
+    [proveedores]="proveedores"
+    (guardar)="guardar($event)"
+    (cancelar)="cerrarForm()"
+  />
+}
+
+@if (productoMover) {
+  <app-movimiento-modal [producto]="productoMover" (registrado)="movimientoRegistrado($event)" (cancelar)="productoMover = null" />
+}
+
+@if (productoHistorial) {
+  <div class="fondo-modal" (click)="productoHistorial = null">
+    <div class="modal modal-ancho" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <h2>Historial de {{ productoHistorial.nombre }}</h2>
+      <app-movimientos [productoId]="productoHistorial.id!" />
+      <div class="modal-acciones">
+        <button type="button" class="btn btn-suave" (click)="productoHistorial = null">Cerrar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (productoAEliminar) {
+  <app-confirmar
+    [titulo]="'¿Eliminar &quot;' + productoAEliminar.nombre + '&quot;?'"
+    mensaje="Irá a la papelera. Un administrador puede restaurarlo y su historial se conserva."
+    boton="Enviar a la papelera"
+    (confirmar)="confirmarEliminar()"
+    (cancelar)="productoAEliminar = null"
+  />
+}
+
+@if (resultadoImport) {
+  <div class="fondo-modal" (click)="resultadoImport = null">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <h2>Resultado de la importación</h2>
+      <p class="subtitulo"><strong>{{ resultadoImport.creados }}</strong> productos creados.
+        @if (resultadoImport.errores.length > 0) { <strong>{{ resultadoImport.errores.length }}</strong> filas con problemas. }
+      </p>
+      @if (resultadoImport.errores.length > 0) {
+        <ul class="lista-errores">
+          @for (e of resultadoImport.errores.slice(0, 20); track e.fila) {
+            <li><strong>Fila {{ e.fila }}:</strong> {{ e.mensaje }}</li>
+          }
+        </ul>
+        @if (resultadoImport.errores.length > 20) { <p class="mini">Y {{ resultadoImport.errores.length - 20 }} más.</p> }
+      }
+      <p class="ayuda">Columnas esperadas: sku, nombre, descripcion, categoria, proveedor, cantidad, stock_minimo, precio_costo, precio_venta.</p>
+      <div class="modal-acciones">
+        <button type="button" class="btn btn-suave" (click)="descargarPlantilla()">Descargar plantilla</button>
+        <button type="button" class="btn btn-primario" (click)="resultadoImport = null">Listo</button>
+      </div>
+    </div>
+  </div>
+}

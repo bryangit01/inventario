@@ -1,0 +1,50 @@
+# =====================================================================
+#  Levanta TODO con un solo comando:   docker compose up --build
+#    - MySQL   (crea las tablas solo, usando backend/database/schema.sql)
+#    - API     http://localhost:3000/api   (docs: /api/docs)
+#    - Angular http://localhost:4200
+#  Para detener:  docker compose down      (agrega -v para borrar los datos)
+# =====================================================================
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-inventario123}
+      MYSQL_DATABASE: inventario_db
+    volumes:
+      - datos_mysql:/var/lib/mysql
+      # Los .sql de esta carpeta se ejecutan automáticamente la primera vez
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-inventario123}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-inventario123}
+      DB_NAME: inventario_db
+      FRONTEND_URL: http://localhost:4200
+      JWT_SECRET: ${JWT_SECRET:-cambia_esto_en_produccion_por_una_frase_larga}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@inventario.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin12345}
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+
+volumes:
+  datos_mysql:

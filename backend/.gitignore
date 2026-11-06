@@ -1,0 +1,19 @@
+
+# Dependencias: se reinstalan con "npm install", no hace falta subirlas
+node_modules/
+
+# Variables de entorno: contienen contraseñas y datos secretos
+.env
+.env.local
+
+# Logs que genera Node o npm
+*.log
+npm-debug.log*
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Configuración personal del editor (opcional)
+.vscode/
+.idea/
